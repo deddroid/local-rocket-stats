@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Local Rocket Stats</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Compact view for a phone next to the monitor. */
+    main { max-width: 520px; gap: 12px; padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); }
+    .status { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .streak { text-align: center; padding: 18px 12px; }
+    .streak .big { font-size: 76px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .streak .label { font-size: 15px; color: var(--muted); margin-top: 4px; }
+    .streak.win .big { color: var(--win); }
+    .streak.loss .big { color: var(--loss); }
+    .record { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .record .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .record .label { font-size: 12px; color: var(--muted); }
+    .dots { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 12px; }
+    .dots span { width: 12px; height: 12px; border-radius: 50%; background: var(--surface-2); }
+    .dots .W { background: var(--win); } .dots .L, .dots .A { background: var(--loss); }
+    .ranks { grid-template-columns: 1fr; }
+    .live .score { font-size: 40px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="status">
+      <strong>Local Rocket Stats</strong>
+      <span id="conn" class="pill">…</span>
+    </div>
+    <section id="live" class="card live" hidden></section>
+    <section id="streak" class="card streak"></section>
+    <section id="ranks" class="ranks"></section>
+    <footer class="footer"><p data-i18n="disclaimer"></p></footer>
+  </main>
+  <script type="module">
+    import { api, esc, enrich, summarize, fmtDelta, playlistName, rankCardsHtml } from "/common.js";
+    import { t, setLang, applyI18n } from "/i18n.js";
+
+    const $ = (s) => document.querySelector(s);
+    let meta = await api("/api/meta");
+    setLang(meta.lang);
+    applyI18n();
+    let version = -1;
+
+    function renderStats(matches, ranks) {
+      const last = matches.at(-1);
+      const session = last ? matches.filter((m) => m.session === last.session) : [];
+      const s = summarize(session);
+      const el = $("#streak");
+      el.className = `card streak ${s.streak > 0 ? "win" : s.streak < 0 ? "loss" : ""}`;
+      const n = Math.abs(s.streak);
+      const label = t(s.streak > 0 ? (n === 1 ? "streak_win_one" : "streak_win_many")
+                    : s.streak < 0 ? (n === 1 ? "streak_loss_one" : "streak_loss_many") : "no_session");
+      const mmr = Object.values(s.mmrDelta).reduce((a, b) => a + b, 0);
+      const hasMmr = Object.keys(s.mmrDelta).length > 0;
+      el.innerHTML = `<div class="big">${n || "–"}</div><div class="label">${label}</div>
+        <div class="record" style="margin-top:16px">
+          <div><div class="value pos">${s.w}</div><div class="label">${t("wins")}</div></div>
+          <div><div class="value neg">${s.l + s.a}</div><div class="label">${t("losses")}</div></div>
+          <div><div class="value ${mmr > 0 ? "pos" : mmr < 0 ? "neg" : ""}">${hasMmr ? (s.mmrApprox ? "≈" : "") + (fmtDelta(mmr) || "0") : "–"}</div><div class="label">${t("mmr_session")}</div></div>
+        </div>
+        <div class="dots">${session.slice(-20).map((m) => `<span class="${esc(m.result)}" title="${esc(m.playlist)}"></span>`).join("")}</div>`;
+      // Rango per le playlist classificate giocate (prima quella dell'ultima partita).
+      const played = [...new Set(matches.filter((m) => m.ranked).map((m) => m.playlist_id).reverse())];
+      const ids = [...played, ...meta.ranked.filter((id) => !played.includes(id) && ranks[id])];
+      $("#ranks").innerHTML = rankCardsHtml(matches, ranks, meta, ids);
+    }
+
+    function renderLive(live) {
+      const conn = $("#conn");
+      conn.textContent = t(live.connected ? (live.match ? "conn_match" : "conn_game") : "conn_off");
+      conn.classList.toggle("on", live.connected);
+      const m = live.match, el = $("#live");
+      if (!m || !m.players.length) { el.hidden = true; return; }
+      const mine = m.my_team ?? 0, opp = 1 - mine, secs = m.time_left ?? 0;
+      const clock = `${m.overtime ? "+" : ""}${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+      el.innerHTML = `<div class="muted">${esc(playlistName(meta, m.playlist_id))}</div>
+        <div class="scoreline"><span class="score"><span class="team-${mine}">${m.score[mine]}</span> – <span class="team-${opp}">${m.score[opp]}</span></span>
+        <span class="clock">${m.ended ? "Finita" : clock}</span></div>`;
+      el.hidden = false;
+    }
+
+    async function poll() {
+      try {
+        const live = await api("/api/live");
+        renderLive(live);
+        if (live.version !== version) {
+          version = live.version;
+          const [matches, ranks] = await Promise.all([api("/api/matches"), api("/api/ranks")]);
+          renderStats(enrich(matches, meta), ranks);
+        }
+      } catch {
+        $("#conn").textContent = t("pc_unreachable");
+        $("#conn").classList.remove("on");
+      }
+      setTimeout(poll, 2000);
+    }
+    poll();
+  </script>
+</body>
+</html>

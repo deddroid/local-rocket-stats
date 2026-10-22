@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)build
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test --release --locked
+      - name: Build
+        # No build machine paths in the binary.
+        run: |
+          export RUSTFLAGS="--remap-path-prefix=$GITHUB_WORKSPACE=/build --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
+          cargo build --release --locked
+      - name: Package
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          name=local-rocket-stats-${tag#v}-linux-x86_64
+          mkdir -p "$name/icons"
+          cp target/release/local-rocket-stats "$name/"
+          cp LICENSE THIRD-PARTY-NOTICES README.md README.it.md CHANGELOG.md install.sh "$name/"
+          cp packaging/linux/local-rocket-stats.desktop "$name/"
+          cp assets/icon.svg assets/icon-*.png "$name/icons/"
+          tar czf "$name.tar.gz" "$name"
+          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: local-rocket-stats-*.tar.gz*
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test --release --locked
+      - name: Build
+        shell: bash
+        run: |
+          export RUSTFLAGS="--remap-path-prefix=$(pwd)=/build"
+          cargo build --release --locked
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.tag || github.ref_name }}"
+          $name = "local-rocket-stats-$($tag.TrimStart('v'))-windows-x86_64"
+          New-Item -ItemType Directory $name | Out-Null
+          Copy-Item target/release/local-rocket-stats.exe, LICENSE, THIRD-PARTY-NOTICES, README.md, README.it.md, CHANGELOG.md $name
+          Compress-Archive -Path $name -DestinationPath "$name.zip"
+          (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower() + "  $name.zip" | Out-File -Encoding ascii "$name.zip.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: local-rocket-stats-*.zip*
+
+  release:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: |
+            local-rocket-stats-*.tar.gz
+            local-rocket-stats-*.tar.gz.sha256
+            local-rocket-stats-*.zip
+            local-rocket-stats-*.zip.sha256
+          generate_release_notes: true

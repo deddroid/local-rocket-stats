@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Local Rocket Stats
+GenericName=Rocket League tracker
+GenericName[it]=Tracker Rocket League
+Comment=Match-by-match Rocket League stats and MMR from the game's local data
+Comment[it]=Statistiche e MMR di Rocket League partita per partita, dai dati locali del gioco
+Exec=local-rocket-stats
+Icon=local-rocket-stats
+Terminal=false
+Categories=Game;
+Keywords=rocket;league;mmr;stats;tracker;rank;
+StartupNotify=false

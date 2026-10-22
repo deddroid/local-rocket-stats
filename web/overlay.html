@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Local Rocket Stats overlay</title>
+  <style>
+    /* Meant as an OBS Browser Source: transparent background, shadowed text. */
+    html, body { margin: 0; background: transparent; }
+    body { font: 600 20px/1.3 system-ui, sans-serif; color: #fff; text-shadow: 0 1px 3px #000, 0 0 2px #000; padding: 8px; }
+    .row { display: flex; gap: 18px; align-items: baseline; }
+    .w { color: #4ade80; } .l { color: #f87171; } .dim { opacity: .75; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div id="o"></div>
+  <script type="module">
+    import { api, esc, enrich, summarize, fmtDelta } from "/common.js";
+    import { t, setLang } from "/i18n.js";
+    const meta = await api("/api/meta");
+    setLang(meta.lang);
+    async function tick() {
+      try {
+        const all = enrich(await api("/api/matches"), meta);
+        const last = all.at(-1);
+        const s = summarize(last ? all.filter((m) => m.session === last.session) : []);
+        const mmr = Object.entries(s.mmrDelta).map(([pl, d]) =>
+          `<span class="${d >= 0 ? "w" : "l"}">${esc(pl.replace("Ranked ", ""))} ${s.mmrApproxBy[pl] ? "≈" : ""}${fmtDelta(d)}</span>`).join(" ");
+        const streak = s.streak > 0 ? `<span class="w">${t("o_streak_w", { n: s.streak })}</span>` : s.streak < 0 ? `<span class="l">${t("o_streak_l", { n: -s.streak })}</span>` : "";
+        document.getElementById("o").innerHTML =
+          `<div class="row"><span><span class="w">${t("o_w", { n: s.w })}</span> – <span class="l">${t("o_l", { n: s.l + s.a })}</span></span>${streak}</div>
+           <div class="row dim">${mmr || "MMR: –"}</div>`;
+      } catch {}
+      setTimeout(tick, 3000);
+    }
+    tick();
+  </script>
+</body>
+</html>

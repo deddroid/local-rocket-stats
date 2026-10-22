@@ -1,0 +1,28 @@
+Third-party notices
+===================
+
+Local Rocket Stats is MIT licensed (see LICENSE). It is built with open source Rust crates
+from crates.io, used unmodified; their licenses are permissive (MIT, Apache-2.0, BSD, Zlib,
+Unlicense, Unicode-3.0), with one exception:
+
+- option-ext (dependency of `dirs`) is licensed under the Mozilla Public License 2.0.
+  Its source code is available unmodified at https://crates.io/crates/option-ext
+  and https://github.com/soc/option-ext.
+
+The executable includes SQLite (via rusqlite's `bundled` feature), which is in the public
+domain: https://www.sqlite.org/copyright.html
+
+The full list of dependencies and their licenses can be printed with:
+
+    cargo metadata --format-version 1 | jq -r '.packages[] | "\(.name) \(.version): \(.license)"'
+
+Data
+----
+
+- Rank/division MMR thresholds in web/ranks.js are community estimates based on
+  Tracker Network data as published by eloascend.com (October 2026). They are factual
+  approximations, not official values, and are not affiliated with or endorsed by either site.
+- Playlist and arena names are used only to describe the game's own data.
+
+Portions of the materials used are trademarks and/or copyrighted works of Epic Games, Inc.
+All rights reserved by Epic. This material is not official and is not endorsed by Epic.

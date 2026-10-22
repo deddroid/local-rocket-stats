@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Rocket Stats</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <img src="/icon.svg" alt="" class="logo">
+    <h1>Local Rocket Stats</h1>
+    <span id="conn" class="pill">…</span>
+    <div class="spacer"></div>
+    <a class="btn ghost" href="/api/export.csv" data-i18n="export_csv">Export CSV</a>
+    <button id="open-settings" class="btn ghost" data-i18n="settings">Settings</button>
+  </header>
+
+  <main>
+    <section id="live" class="card live" hidden></section>
+
+    <form id="mmr-banner" class="card banner" hidden>
+      <div>
+        <strong id="mmr-banner-title"></strong>
+        <div id="mmr-banner-hint" class="muted"></div>
+      </div>
+      <input id="mmr-banner-input" type="number" inputmode="numeric" step="1" placeholder="MMR" required>
+      <button class="btn" data-i18n="save">Save</button>
+      <button type="button" id="mmr-banner-skip" class="btn ghost" data-i18n="skip">Skip</button>
+    </form>
+
+    <section class="filters">
+      <label><span data-i18n="period">Period</span>
+        <select id="f-period">
+          <option value="session" data-i18n="p_session">Last session</option>
+          <option value="today" data-i18n="p_today">Today</option>
+          <option value="7" data-i18n="p_7">7 days</option>
+          <option value="30" data-i18n="p_30">30 days</option>
+          <option value="all" data-i18n="p_all">All</option>
+        </select>
+      </label>
+      <label><span data-i18n="playlist">Playlist</span>
+        <select id="f-playlist"></select>
+      </label>
+      <span id="period-label" class="muted"></span>
+    </section>
+
+    <section id="ranks" class="ranks" hidden></section>
+
+    <section id="tiles" class="tiles"></section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="mmr_trend">MMR trend</h2>
+        <select id="chart-playlist"></select>
+      </div>
+      <div id="chart" class="chart"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 data-i18n="matches">Matches</h2><span id="match-count" class="muted"></span></div>
+      <div class="table-wrap">
+        <table id="matches">
+          <thead>
+            <tr>
+              <th data-i18n="date">Date</th><th data-i18n="playlist">Playlist</th><th data-i18n="result">Result</th>
+              <th class="num" data-i18n="points">Points</th>
+              <th class="num" data-i18n="gasp" data-i18n-title="gasp_title">G/A/S/Sh</th>
+              <th class="num">MMR</th><th class="num">Δ</th><th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="empty" class="muted empty" hidden data-i18n="empty"></p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p data-i18n="footer_local"></p>
+    <p data-i18n="disclaimer"></p>
+  </footer>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2 data-i18n="settings">Settings</h2>
+      <label><span data-i18n="language">Language</span>
+        <select id="s-lang">
+          <option value="" data-i18n="lang_auto">System</option>
+          <option value="en">English</option>
+          <option value="it">Italiano</option>
+        </select>
+      </label>
+      <label><span data-i18n="accounts">Your accounts</span>
+        <textarea id="s-me" rows="3" placeholder="Epic|abc123…|0"></textarea>
+      </label>
+      <div id="s-candidates" class="candidates"></div>
+      <label><span data-i18n="session_gap">Session gap</span>
+        <input id="s-gap" type="number" min="5" step="5">
+      </label>
+      <div class="actions">
+        <button value="cancel" class="btn ghost" formnovalidate data-i18n="cancel">Cancel</button>
+        <button value="save" class="btn" data-i18n="save">Save</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
