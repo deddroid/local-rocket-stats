@@ -13,7 +13,7 @@ provides=("$pkgname")
 conflicts=("$pkgname-bin")
 options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('3fc6825a174459d0e0f9ec3fb883eab549b8be41da232a7b78d58218f3b97a6f')
 
 prepare() {
   cd "$pkgname-$pkgver"
